@@ -1,9 +1,10 @@
 # Manage IAM Access for a Multi-Account Architecture
 
 
-There are two repositories to manage IAM access.
-    1. To manage IAM users, groups and roles in Jump Account aka Identity Account in AWS terms
-    2. A common repo which will be used to manage cross-accounts IAM roles in each sub-account
+There are two repositories to manage IAM access:
+
+ 1. To manage IAM users, groups and roles in Jump Account aka Identity Account in AWS terms
+ 2. A common repo which will be used to manage cross-accounts IAM roles in each sub-account
 
 I would suggest to create separate repos for the same to avoid unneccesary triggers after every merge to a branch on CodePipeline
 
