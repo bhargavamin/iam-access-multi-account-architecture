@@ -1,0 +1,182 @@
+---
+
+AWSTemplateFormatVersion: '2010-09-09'
+
+
+Description: Account-based cross-account-admin groups
+
+
+Mappings:
+  AccountMap:
+    bi-development:
+      AccountId: 'XXXXXXXXXXXX'
+    bi-production:
+      AccountId: 'XXXXXXXXXXXX'
+    crm-developement:
+      AccountId: 'XXXXXXXXXXXX'
+    crm-production:
+      AccountId: 'XXXXXXXXXXXX'
+    development:
+      AccountId: '123456789101'
+    production:
+      AccountId: 'XXXXXXXXXXXX'
+    staging:
+      AccountId: 'XXXXXXXXXXXX'
+
+
+
+Outputs:
+  biAccountsCombined:
+    Export:
+      Name:
+        Fn::Sub: ${AWS::StackName}-biAccountsCombined
+    Value:
+      Ref: biAccountsCombined
+
+  crmAccountsCombined:
+    Export:
+      Name:
+        Fn::Sub: ${AWS::StackName}-crmAccountsCombined
+    Value:
+      Ref: crmAccountsCombined
+
+  devAccount:
+    Export:
+      Name:
+        Fn::Sub: ${AWS::StackName}-devAccount
+    Value:
+      Ref: devAccount
+
+  productionAccount:
+    Export:
+      Name:
+        Fn::Sub: ${AWS::StackName}-devAccount
+    Value:
+      Ref: productionAccount
+
+  stagingAccount:
+    Export:
+      Name:
+        Fn::Sub: ${AWS::StackName}-stagingAccount
+    Value:
+      Ref: stagingAccount
+
+
+Resources:
+  devAccount:
+    Type: AWS::IAM::Group
+    Properties:
+      GroupName: iam-group-admin-development
+      Policies:
+      - PolicyName: AdministratorAccessPolicy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Action:
+            - sts:AssumeRole
+            Effect: Allow
+            Resource:
+              Fn::Sub:
+              - arn:aws:iam::${AccountId}:role/AdministratorAccessAssumeRole
+              - AccountId:
+                  Fn::FindInMap:
+                  - AccountMap
+                  - development
+                  - AccountId
+
+  productionAccount:
+    Type: AWS::IAM::Group
+    Properties:
+      GroupName: iam-group-readonly-production
+      Policies:
+      - PolicyName: ReadOnlyAccessAssumeRole
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Action:
+            - sts:AssumeRole
+            Effect: Allow
+            Resource:
+              Fn::Sub:
+              - arn:aws:iam::${AccountId}:role/ReadOnlyAccessAssumeRole
+              - AccountId:
+                  Fn::FindInMap:
+                  - AccountMap
+                  - production
+                  - AccountId
+
+  stagingAccount:
+    Type: AWS::IAM::Group
+    Properties:
+      GroupName: iam-group-admin-production
+      Policies:
+      - PolicyName: AdministratorAccessAssumeRole
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Action:
+            - sts:AssumeRole
+            Effect: Allow
+            Resource:
+              Fn::Sub:
+              - arn:aws:iam::${AccountId}:role/AdministratorAccessAssumeRole
+              - AccountId:
+                  Fn::FindInMap:
+                  - AccountMap
+                  - staging
+                  - AccountId
+ 
+  biAccountsCombined:
+    Type: AWS::IAM::Group
+    Properties:
+      GroupName: iam-group-admin-biAccountsCombined
+      Policies:
+      - PolicyName: AdministratorAccessPolicy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Resource:
+            - Fn::Sub:
+              - arn:aws:iam::${AccountId}:role/AdministratorAccessAssumeRole
+              - AccountId:
+                  Fn::FindInMap:
+                  - AccountMap
+                  - bi-production
+                  - AccountId
+            - Fn::Sub:
+              - arn:aws:iam::${AccountId}:role/AdministratorAccessAssumeRole
+              - AccountId:
+                  Fn::FindInMap:
+                  - AccountMap
+                  - bi-staging
+                  - AccountId
+
+  crmAccountsCombined:
+    Type: AWS::IAM::Group
+    Properties:
+      GroupName: iam-group-admin-crmAccountsCombined
+      Policies:
+      - PolicyName: AdministratorAccessPolicy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Resource:
+            - Fn::Sub:
+              - arn:aws:iam::${AccountId}:role/AdministratorAccessAssumeRole
+              - AccountId:
+                  Fn::FindInMap:
+                  - AccountMap
+                  - crm-production
+                  - AccountId
+            - Fn::Sub:
+              - arn:aws:iam::${AccountId}:role/AdministratorAccessAssumeRole
+              - AccountId:
+                  Fn::FindInMap:
+                  - AccountMap
+                  - crm-staging
+                  - AccountId
+...

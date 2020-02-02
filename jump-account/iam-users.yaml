@@ -1,0 +1,18 @@
+---
+
+AWSTemplateFormatVersion: '2010-09-09'
+
+
+Description: IAM user stack defining users and grant switch to team accounts
+
+
+Resources:
+  UserBhargavAmin:
+    Type: AWS::IAM::User
+    Properties:
+      UserName: bhargav_amin
+      Groups:
+      - Fn::ImportValue: iam-group-admin-devAccount
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/IAMUserChangePassword
+...

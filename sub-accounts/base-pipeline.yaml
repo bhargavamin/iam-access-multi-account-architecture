@@ -1,0 +1,164 @@
+
+
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Central and automated continuous deployment IAM access
+
+Mappings:
+  environment:
+    development:
+      branch: 'development'
+      ShortEnv: d
+    production:
+      branch: 'production'
+      ShortEnv: p
+    staging:
+      branch: 'master'
+      ShortEnv: s
+
+
+Parameters:
+  account_name:
+    Description: Name of the account, must map to the folder structure in this repo
+    Type: String
+
+  env_type:
+    Type: String
+    Description: environment type
+    AllowedValues: [development, production, staging]
+
+  github_oauth_token:
+    Description: The personal access token of the GitHub source repo used for base pipelines
+    NoEcho: true
+    Type: String
+
+
+Resources:
+  artifact_store_bucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    Properties:
+      AccessControl: BucketOwnerFullControl
+      Tags:
+      - Key: generated-by
+        Value: cloudformation
+      - Key: Name
+        Value:
+          Ref: AWS::StackName
+      VersioningConfiguration:
+        Status: Enabled
+
+  admin_access_cloudformation_role:
+    Type: AWS::IAM::Role
+    Description: sub-account-pipeline
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          Action: sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service: cloudformation.amazonaws.com
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/AdministratorAccess
+
+  default_pipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      ArtifactStore:
+        Location:
+          Ref: artifact_store_bucket
+        Type: S3
+      Name:
+        Ref: AWS::StackName
+      RoleArn:
+        Fn::GetAtt:
+        - pipeline_role
+        - Arn
+      Stages:
+      - Name: Source-Stage
+        Actions:
+        - Name: Source-Action
+          ActionTypeId:
+            Category: Source
+            Owner: ThirdParty
+            Provider: GitHub
+            Version: 1
+          Configuration:
+            Branch:
+              Fn::FindInMap:
+              - environment
+              - Ref: env_type
+              - branch
+            OAuthToken:
+              Ref: github_oauth_token
+            Owner: bhargavamin
+            Repo: iam-access-multi-account-architecture
+          InputArtifacts: []
+          OutputArtifacts:
+          - Name: SourceOutput
+
+      - Name: Pipeline-Stage
+        Actions:
+        - Name: Pipeline-Action
+          ActionTypeId:
+            Category: Deploy
+            Owner: AWS
+            Provider: CloudFormation
+            Version: 1
+          Configuration:
+            ActionMode: CREATE_UPDATE
+            Capabilities: CAPABILITY_IAM,CAPABILITY_NAMED_IAM
+            ParameterOverrides:
+              Fn::Sub: |
+                {
+                  "account_name": "${account_name}",
+                  "github_oauth_token": "${github_oauth_token}",
+                }
+            RoleArn:
+              Fn::GetAtt:
+              - admin_access_cloudformation_role
+              - Arn
+            StackName:
+              Ref: AWS::StackName
+            TemplatePath: SourceOutput::base/global/pipeline.yaml
+          InputArtifacts:
+          - Name: SourceOutput
+          RunOrder: 1
+
+      - Name: IAM-Assume-Role-Stage
+        Actions:
+        - Name: base-iam-roles
+          ActionTypeId:
+            Category: Deploy
+            Owner: AWS
+            Provider: CloudFormation
+            Version: 1
+          Configuration:
+            ActionMode: CREATE_UPDATE
+            Capabilities: CAPABILITY_IAM,CAPABILITY_NAMED_IAM
+            RoleArn:
+              Fn::GetAtt:
+              - admin_access_cloudformation_role
+              - Arn
+            StackName: base-iam-roles
+            TemplatePath: SourceOutput::${account_name}/iam-roles.yaml
+          InputArtifacts:
+          - Name: SourceOutput
+          RunOrder: 1
+
+  pipeline_role:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          Action: sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service: codepipeline.amazonaws.com
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/AdministratorAccess
+      Path: /
+
+...

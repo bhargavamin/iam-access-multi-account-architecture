@@ -1,0 +1,51 @@
+---
+
+AWSTemplateFormatVersion: '2010-09-09'
+
+
+Description: CIAM Roles and Policies
+
+
+Resources:
+  administrator_access_assume_role:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: administrator_access_assume_role
+      AssumeRolePolicyDocument:
+        Statement:
+        - Action: sts:AssumeRole
+          Effect: Allow
+          Principal:
+            AWS: arn:aws:iam::12345678910:root
+        Version: '2012-10-17'
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/AdministratorAccess
+
+  read_only_access_assume_role:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: read_only_access_assume_role
+      AssumeRolePolicyDocument:
+        Statement:
+        - Action: sts:AssumeRole
+          Effect: Allow
+          Principal:
+            AWS: arn:aws:iam::12345678910:root
+        Version: '2012-10-17'
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/ReadOnlyAccess
+      Policies:
+      - PolicyName: DenyAccessToSensitiveData
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Action:
+            - codepipeline:GetPipelineExecution
+            - codepipeline:GetPipeline
+            - secretsmanager:*
+            - ssm:*
+            - kms:*
+            Effect: Deny
+            Resource: '*'
+
+...
